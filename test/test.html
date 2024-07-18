@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tunisia Map</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <style>
+      #map {
+        height: 600px;
+      }
+      #message {
+        margin: 10px;
+        padding: 10px;
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        display: none; /* Initially hidden */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="message"></div>
+    <!-- Message placeholder -->
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+      $(document).ready(function () {
+        var map = L.map("map").setView([34.0, 9.0], 7); // Set initial view coordinates and zoom level
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 18,
+          attribution:
+            'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        // Fetch points and lines from server
+        $.getJSON("fetch_data.php", function (data) {
+          var points = data.points;
+          var lines = data.lines;
+
+          // Add points to map
+          points.forEach(function (point) {
+            var marker = L.marker([
+              point.geom.coordinates[1],
+              point.geom.coordinates[0],
+            ])
+              .addTo(map)
+              .bindPopup(point.name);
+          });
+
+          // Add lines to map
+          lines.forEach(function (line) {
+            var coordinates = line.geom.coordinates.map(function (coord) {
+              return [coord[1], coord[0]];
+            });
+            var polyline = L.polyline(coordinates).addTo(map);
+          });
+
+          // Show message with details for Entity1
+          var entity1Details = data.entity1; // Assuming 'entity1' contains details for Entity1
+          if (entity1Details) {
+            var message = "Connected to database. Details for Entity1:<br>";
+            message += "<strong>Name:</strong> " + entity1Details.name + "<br>";
+            message +=
+              "<strong>Entity Type:</strong> " +
+              entity1Details.entity_type +
+              "<br>";
+            message +=
+              "<strong>Coordinates:</strong> " +
+              entity1Details.coordinates +
+              "<br>";
+            $("#message").html(message).show();
+          } else {
+            $("#message").html("Data for Entity1 not found.").show();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
