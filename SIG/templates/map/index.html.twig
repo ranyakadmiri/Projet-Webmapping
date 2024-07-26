@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tunisia Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <style>
+        #map {
+            height: 600px;
+        }
+        #sidebar {
+            width: 10%;
+            height: 600px;
+            float: left;
+            overflow: auto;
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+        .draggable {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #ddd;
+            cursor: move;
+        }
+        .drag-over {
+            background-color: #aaa;}
+    </style>
+</head>
+<body>
+<div id="sidebar">
+        <div id="draggable-entity" class="draggable" draggable="true">Place Entity</div>
+        <!-- Add more draggable items as needed -->
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var map = L.map('map').setView([33.8869, 9.5375], 7); // Set initial view coordinates and zoom level
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Define the custom icon
+            var houseIcon = L.icon({
+                iconUrl: '/house-icon.png', // Path to your custom icon
+                iconSize: [32, 32], // Size of the icon
+                iconAnchor: [16, 32], // Point of the icon which will correspond to marker's location
+                popupAnchor: [0, -32] // Point from which the popup should open relative to the iconAnchor
+            });
+                 var draggableEntities = document.querySelectorAll('.draggable');
+
+            draggableEntities.forEach(function (entity) {
+                entity.addEventListener('dragstart', function (event) {
+                    event.dataTransfer.setData('text/plain', entity.id);
+                });
+            });
+
+            map.getContainer().addEventListener('dragover', function (event) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+            });
+
+            map.getContainer().addEventListener('drop', function (event) {
+                event.preventDefault();
+                var entityId = event.dataTransfer.getData('text/plain');
+                var entityName = document.getElementById(entityId).textContent;
+
+                var offset = map.containerPointToLatLng(L.point(event.clientX, event.clientY));
+                var marker = L.marker([offset.lat, offset.lng], { icon: houseIcon }).addTo(map);
+                marker.bindPopup(entityName + ' at ' + offset.lat + ', ' + offset.lng).openPopup();
+            });
+      
+
+            // Fetch points from the server
+            $.getJSON("{{ path('fetch_data') }}", function (data) {
+                if (Array.isArray(data)) {
+                    data.forEach(function (entity) {
+                        var geometry = JSON.parse(entity.geometry);
+                        if (geometry.type === "Point") {
+                            var marker = L.marker([geometry.coordinates[1], geometry.coordinates[0]], { icon: houseIcon })
+                                .addTo(map)
+                                .bindPopup(entity.reference + '<br>' + JSON.stringify(entity.infos));
+                        }
+                    });
+                } else {
+                    console.error("Unexpected data format:", data);
+                }
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.error("Error fetching data:", textStatus, errorThrown);
+            });
+        });
+    </script>
+</body>
+</html>
