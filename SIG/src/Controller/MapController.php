@@ -2,12 +2,17 @@
 
 namespace App\Controller;
 
+
+use App\Entity\Entity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Doctrine\DBAL\Connection;
-use App\Repository\EntityRepository;
+use App\Form\EntityType;
+
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Doctrine\ORM\EntityManagerInterface;
+
 
 class MapController extends AbstractController
 {
@@ -15,7 +20,14 @@ class MapController extends AbstractController
 
     public function index()
     {
-        return $this->render('map/index.html.twig');
+        $entity = new Entity();
+        $form = $this->createForm(EntityType::class, $entity);
+
+
+        return $this->render('map/index.html.twig', [
+            'EntityForm' => $form->createView(),
+
+        ]);
     }
 
 
@@ -28,5 +40,26 @@ class MapController extends AbstractController
         $entities = $result->fetchAllAssociative();
 
         return new JsonResponse($entities);
+    }
+    #[Route('/save-entity', name: 'save_entity', methods: ['POST'])]
+
+    public function saveEntity(Request $request, EntityManagerInterface $entityManager)
+    {
+        $entity = new Entity();
+        $form = $this->createForm(EntityType::class, $entity);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Get geometry from hidden field
+            $geom = $request->request->get('geom');
+            $entity->setGeometry($geom); // Assuming this is a GeoJSON string
+
+            $entityManager->persist($entity);
+            $entityManager->flush();
+
+            return new JsonResponse(['status' => 'Entity saved successfully']);
+        }
+
+        return new JsonResponse(['status' => 'Invalid form data'], 400);
     }
 }
